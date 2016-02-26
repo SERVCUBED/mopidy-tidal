@@ -1,10 +1,10 @@
 from __future__ import unicode_literals
 
+from caches import search_in_cache, save_search_in_cache
+
 import logging
 
 from threading import Thread
-
-from lru_cache import SearchCache
 
 from mopidy_tidal.full_models_mappers import create_mopidy_albums, \
     create_mopidy_artists, create_mopidy_tracks
@@ -14,9 +14,15 @@ from mopidy_tidal.utils import remove_watermark
 logger = logging.getLogger(__name__)
 
 
-@SearchCache
 def tidal_search(session, query, exact):
     logger.info('Searching Tidal for: %s %r', "Exact" if exact else "", query)
+
+    cached_results = search_in_cache(exact, query)
+    if cached_results:
+        logger.info("Tidal Search Cache HIT")
+        return cached_results
+
+    logger.info("Tidal Search Cache MISS")
     for (field, values) in query.iteritems():
         if not hasattr(values, '__iter__'):
             values = [values]
@@ -46,6 +52,7 @@ def tidal_search(session, query, exact):
                     album_search.results, \
                     track_search.results
 
+            save_search_in_cache(exact, query, results)
             return results
 
         return [], [], []

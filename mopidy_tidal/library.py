@@ -1,5 +1,7 @@
 from __future__ import unicode_literals
 
+import caches
+
 import logging
 
 from mopidy import backend, models
@@ -9,8 +11,6 @@ from mopidy.models import SearchResult
 from mopidy_tidal import full_models_mappers
 
 from mopidy_tidal import ref_models_mappers
-
-from mopidy_tidal.lru_cache import LruCache
 
 from mopidy_tidal.search import tidal_search
 
@@ -24,7 +24,6 @@ class TidalLibraryProvider(backend.LibraryProvider):
 
     def __init__(self, *args, **kwargs):
         super(TidalLibraryProvider, self).__init__(*args, **kwargs)
-        self.lru_album_tracks = LruCache(max_size=10)
 
     def get_distinct(self, field, query=None):
         logger.debug("Browsing distinct %s with query %r", field, query)
@@ -51,8 +50,10 @@ class TidalLibraryProvider(backend.LibraryProvider):
                 if len(artists) > 0:
                     artist = artists[0]
                     artist_id = artist.uri.split(":")[2]
-                    return [apply_watermark(a.name) for a in
-                            session.get_artist_albums(artist_id)]
+                    found_albums = full_models_mappers.create_mopidy_albums(
+                        session.get_artist_albums(artist_id))
+                    caches.albums.put_by_uri(found_albums)
+                    return [apply_watermark(a.name) for a in found_albums]
             elif field == "track":
                 return [apply_watermark(t.name) for t in
                         session.user.favorites.tracks()]
@@ -133,11 +134,11 @@ class TidalLibraryProvider(backend.LibraryProvider):
         return tracks
 
     def _lookup_track(self, session, parts):
-        album_id = parts[3]
-        tracks = self.lru_album_tracks.hit(album_id)
+        album_id = 'tidal:album' + parts[3]
+        tracks = caches.album_tracks.hit(album_id)
         if tracks is None:
             tracks = session.get_album_tracks(album_id)
-            self.lru_album_tracks[album_id] = tracks
+            caches.album_tracks[album_id] = tracks
 
         track = [t for t in tracks if t.id == int(parts[4])][0]
         artist = full_models_mappers.create_mopidy_artist(track.artist)

@@ -23,3 +23,12 @@ def get_query_param(query, param, should_remove_watermark=True):
             val = next(iter(val))
 
     return remove_watermark(val) if should_remove_watermark else val
+
+
+def first_or_default(items, default=None):
+    if items:
+        for item in items:
+            return item
+
+    return default
+
