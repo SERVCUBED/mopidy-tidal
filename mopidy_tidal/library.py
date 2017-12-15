@@ -92,6 +92,12 @@ class TidalLibraryProvider(backend.LibraryProvider):
         elif uri == "tidal:genres":
             return ref_models_mappers.create_genres(
                     session.get_genres())
+        elif uri == "tidal:rising":
+            items = []
+
+            for r in session.get_category_items("rising"):
+                items += self._get_rising_items(r)
+            return items
 
         # details
 
@@ -119,6 +125,11 @@ class TidalLibraryProvider(backend.LibraryProvider):
         if nr_of_parts == 3 and parts[1] == "genre":
             return ref_models_mappers.create_playlists(
                 session.get_genre_items(parts[2], 'playlists'))
+
+        if nr_of_parts == 4 and parts[1] == "rising":
+            # TODO
+            return []  # self._get_rising_items(parts[2])
+            # ref_models_mappers.create_rising_items(session.get_rising_items(parts[2]))
 
         logger.debug('Unknown uri for browse request: %s', uri)
         return []
@@ -216,3 +227,30 @@ class TidalLibraryProvider(backend.LibraryProvider):
         artist_id = parts[2]
         artist_tracks = session.get_artist_top_tracks(artist_id)
         return full_models_mappers.create_mopidy_tracks(artist_tracks)
+
+    def _get_rising_items(self, rising):
+        logger.info("Loading rising items: ", rising['path'])
+        session = self.backend._session
+        items = []
+        if rising['hasPlaylists']:
+            items += ref_models_mappers.create_rising(rising, 'playlists')
+        if rising['hasArtists']:
+            items += ref_models_mappers.create_rising(rising, 'artists')
+        if rising['hasAlbums']:
+            items += ref_models_mappers.create_rising(rising, 'albums')
+        if rising['hasTracks']:
+            items += ref_models_mappers.create_rising(rising, 'tracks')
+
+        # if rising['hasPlaylists']:
+        #     items += ref_models_mappers.create_playlists(session.get_category_content("rising", rising['path'], 'playlists', limit=50))
+        # if rising['hasArtists']:
+        #     items += ref_models_mappers.create_artists(session.get_category_content("rising", rising['path'], 'artists', limit=50))
+        # if rising['hasAlbums']:
+        #     items += ref_models_mappers.create_albums(session.get_category_content("rising", rising['path'], 'albums', limit=50))
+        # if rising['hasTracks']:
+        #     items += ref_models_mappers.create_tracks(session.get_category_content("rising", rising['path'], 'tracks', limit=50))
+
+        for item in items:
+            item.title = rising['name'] + " " + item.title
+
+        return items

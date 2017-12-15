@@ -9,6 +9,7 @@ logger = logging.getLogger(__name__)
 
 def create_root():
     return [Ref.directory(uri="tidal:genres", name="Genres"),
+            Ref.directory(uri="tidal:rising", name="Rising"),
             Ref.directory(uri="tidal:moods", name="Moods"),
             Ref.directory(uri="tidal:my_artists", name="My Artists"),
             Ref.directory(uri="tidal:my_albums", name="My Albums"),
@@ -49,6 +50,22 @@ def create_genres(tidal_genres):
 def create_genre(tidal_genre):
     return Ref.playlist(uri="tidal:genre:" + str(tidal_genre.id),
                         name=tidal_genre.name)
+
+
+def create_rising(tidal_rising, item_type):
+    if item_type == "playlist":
+        return Ref.playlist(uri="tidal:rising:%s:%s" % str(tidal_rising['path']) % item_type,
+                        name=tidal_rising.name)
+    if item_type == "artist":
+        return Ref.artist(uri="tidal:rising:%s:%s" % str(tidal_rising['path']) % item_type,
+                        name=tidal_rising.name)
+    if item_type == "album":
+        return Ref.album(uri="tidal:rising:%s:%s" % str(tidal_rising['path']) % item_type,
+                        name=tidal_rising.name)
+    if item_type == "track":
+        return Ref.track(uri="tidal:rising:%s:%s" % str(tidal_rising['path']) % item_type,
+                        name=tidal_rising.name)
+    return None
 
 
 def create_albums(tidal_albums):
